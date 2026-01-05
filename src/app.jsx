@@ -5,6 +5,7 @@ import { Output } from './components/Output';
 import { Settings } from './components/Settings';
 import { usePyodide } from './hooks/usePyodide';
 import { useStickyState } from './hooks/useStickyState';
+import { useDarkMode } from './hooks/useDarkMode';
 
 const DEFAULT_CODE = `# Welcome to Python Interpreter Visualizer
 # Write your Python code here and click Run
@@ -30,27 +31,41 @@ export function App() {
 
   // Settings
   const [filterModules, setFilterModules] = useStickyState(true, 'filterModules');
+  const [theme, setTheme, actualTheme] = useDarkMode();
 
   const { pyodide, loading, error, runCode, runCodeWithTrace } = usePyodide();
+
+  // Apply dark mode class to document root
+  useEffect(() => {
+    if (actualTheme === 'dark') {
+      document.documentElement.classList.add('dark');
+    } else {
+      document.documentElement.classList.remove('dark');
+    }
+  }, [actualTheme]);
 
   // Keyboard shortcuts
   useEffect(() => {
     const handleKeyDown = (e) => {
-      if (mode === 'running') {
+      // Ctrl-S or Cmd-S or F5
+      if ((e.ctrlKey || e.metaKey) && e.key === 's') {
+        e.preventDefault();
+        if (mode === 'running') {
+          handleReset();
+        } else {
+          handleRun();
+        }
+      } else if (e.key === 'F5') {
+        e.preventDefault();
+        if (mode === 'running') {
+          handleReset();
+        } else {
+          handleRun();
+        }
+      } else if (mode === 'running' && e.key === 'Enter') {
         // Enter to step when in running mode
-        if (e.key === 'Enter') {
-          e.preventDefault();
-          handleStep();
-        }
-      } else {
-        // Ctrl-S or Cmd-S or F5 to run in editing mode
-        if ((e.ctrlKey || e.metaKey) && e.key === 's') {
-          e.preventDefault();
-          handleRun();
-        } else if (e.key === 'F5') {
-          e.preventDefault();
-          handleRun();
-        }
+        e.preventDefault();
+        handleStep();
       }
     };
 
@@ -65,6 +80,7 @@ export function App() {
     setOutput('Running...\n');
     setCurrentStep(0);
     setPrevVariables({});
+    setTraces([]); // Clear old traces immediately
 
     const result = await runCodeWithTrace(code, filterModules);
 
@@ -176,6 +192,8 @@ export function App() {
           <Settings
             filterModules={filterModules}
             setFilterModules={setFilterModules}
+            theme={theme}
+            setTheme={setTheme}
           />
         </div>
       </header>

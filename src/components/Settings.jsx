@@ -1,6 +1,6 @@
 import { useState, useRef, useEffect } from 'preact/hooks';
 
-export function Settings({ filterModules, setFilterModules }) {
+export function Settings({ filterModules, setFilterModules, theme, setTheme }) {
   const [isOpen, setIsOpen] = useState(false);
   const popoverRef = useRef(null);
 
@@ -21,22 +21,10 @@ export function Settings({ filterModules, setFilterModules }) {
     <div className="relative" ref={popoverRef}>
       <button
         onClick={() => setIsOpen(!isOpen)}
-        className="p-2 hover:bg-background-secondary border border-border transition-colors"
+        className="px-3 py-1.5 text-sm text-text hover:bg-background-secondary border border-border transition-colors"
         title="Settings"
       >
-        <svg
-          width="18"
-          height="18"
-          viewBox="0 0 24 24"
-          fill="none"
-          stroke="currentColor"
-          strokeWidth="2"
-          strokeLinecap="round"
-          strokeLinejoin="round"
-        >
-          <circle cx="12" cy="12" r="3" />
-          <path d="M12 1v6m0 6v6m5.2-13.2l-4.2 4.2m-2.8 2.8-4.2 4.2M23 12h-6m-6 0H1m18.2 5.2l-4.2-4.2m-2.8-2.8-4.2-4.2" />
-        </svg>
+        settings
       </button>
 
       {isOpen && (
@@ -45,6 +33,40 @@ export function Settings({ filterModules, setFilterModules }) {
             <h3 className="font-semibold text-text">Settings</h3>
           </div>
           <div className="p-4 space-y-4">
+            {/* Theme setting */}
+            <div>
+              <div className="text-sm font-medium text-text mb-2">Theme</div>
+              <div className="space-y-2">
+                <label className="flex items-center gap-2 cursor-pointer">
+                  <input
+                    type="radio"
+                    name="theme"
+                    checked={theme === 'auto'}
+                    onChange={() => setTheme('auto')}
+                  />
+                  <span className="text-sm text-text">Auto (follow system)</span>
+                </label>
+                <label className="flex items-center gap-2 cursor-pointer">
+                  <input
+                    type="radio"
+                    name="theme"
+                    checked={theme === 'light'}
+                    onChange={() => setTheme('light')}
+                  />
+                  <span className="text-sm text-text">Light</span>
+                </label>
+                <label className="flex items-center gap-2 cursor-pointer">
+                  <input
+                    type="radio"
+                    name="theme"
+                    checked={theme === 'dark'}
+                    onChange={() => setTheme('dark')}
+                  />
+                  <span className="text-sm text-text">Dark</span>
+                </label>
+              </div>
+            </div>
+
             {/* Filter modules setting */}
             <label className="flex items-start gap-3 cursor-pointer">
               <input
