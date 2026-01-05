@@ -170,13 +170,31 @@ finally:
     sys.settrace(None)
       `);
 
-      // Capture final output state (to catch any prints that happened after last line trace)
+      // Capture final state after execution completes
+      const numLines = code.split('\n').length;
       pyodide.runPython(`
-# Add a final trace entry with the complete output
-if _trace_data:
-    final_output = sys.stdout.getvalue()
-    # Update the last trace with final output
-    _trace_data[-1]['output'] = final_output
+# Add a final trace entry showing state after last line executes
+final_output = sys.stdout.getvalue()
+
+# Get final global variables
+final_globals = {}
+for name, value in globals().items():
+    if (not name.startswith('_') and name not in _builtins):
+        # Filter modules if enabled
+        if _filter_modules and isinstance(value, types.ModuleType):
+            continue
+        final_globals[name] = {
+            'type': type(value).__name__,
+            'value': repr(value)[:100]
+        }
+
+# Add final trace entry (line number is one past the last line)
+_trace_data.append({
+    'line': ${numLines + 1},
+    'globalVariables': final_globals,
+    'callStack': [],
+    'output': final_output
+})
       `);
 
       // Get trace data
