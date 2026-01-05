@@ -39,13 +39,6 @@ export function App() {
         } else {
           handleRun();
         }
-      } else if (e.key === 'F5') {
-        e.preventDefault();
-        if (mode === 'running') {
-          handleReset();
-        } else {
-          handleRun();
-        }
       } else if (mode === 'running' && e.key === 'Enter') {
         // Enter to step when in running mode
         e.preventDefault();
@@ -107,7 +100,8 @@ export function App() {
   };
 
   const currentTrace = traces[currentStep];
-  const currentLine = currentTrace ? currentTrace.line : null;
+  // Only show line highlight when in running mode
+  const currentLine = mode === 'running' && currentTrace ? currentTrace.line : null;
   const currentGlobalVariables = currentTrace ? currentTrace.globalVariables : {};
   const currentCallStack = currentTrace ? currentTrace.callStack : [];
   const currentOutput = currentTrace ? currentTrace.output : '';
@@ -152,7 +146,7 @@ export function App() {
                 disabled={currentStep >= traces.length - 1}
                 className="px-4 py-1.5 bg-primary text-white text-sm border border-primary-dark disabled:opacity-50 disabled:cursor-not-allowed hover:bg-primary-dark transition-colors"
               >
-                Step
+                Step (⏎)
               </button>
               <button
                 onClick={handleReset}
@@ -169,7 +163,7 @@ export function App() {
               disabled={loading || !pyodide}
               className="px-4 py-1.5 bg-primary text-white text-sm border border-primary-dark disabled:opacity-50 disabled:cursor-not-allowed hover:bg-primary-dark transition-colors"
             >
-              Run (Ctrl-S / F5)
+              Run (Ctrl-S)
             </button>
           )}
         </div>

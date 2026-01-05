@@ -95,17 +95,19 @@ export function CodeEditor({ value, onChange, currentLine = null, readOnly = fal
     const doc = viewRef.current.state.doc;
     const totalLines = doc.lines;
 
-    // Only set highlight if line is within document
-    const lineToHighlight = currentLine !== null && currentLine <= totalLines ? currentLine : null;
+    // Clamp line to valid range, or null if out of bounds or not set
+    const validLine = currentLine !== null && currentLine >= 1 && currentLine <= totalLines
+      ? currentLine
+      : null;
 
     viewRef.current.dispatch({
-      effects: setHighlightedLine.of(lineToHighlight),
+      effects: setHighlightedLine.of(validLine),
     });
 
-    // Scroll to the highlighted line (or last line if past the end)
-    if (currentLine !== null) {
-      const lineNumber = Math.min(currentLine, totalLines);
-      const line = viewRef.current.state.doc.line(lineNumber);
+    // Scroll to the line (clamped to last line if beyond document)
+    if (currentLine !== null && currentLine >= 1) {
+      const lineNum = Math.min(currentLine, totalLines);
+      const line = viewRef.current.state.doc.line(lineNum);
       viewRef.current.dispatch({
         effects: EditorView.scrollIntoView(line.from, { y: 'center' }),
       });
