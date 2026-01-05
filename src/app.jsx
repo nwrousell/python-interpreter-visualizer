@@ -2,9 +2,7 @@ import { useState, useEffect } from 'preact/hooks';
 import { CodeEditor } from './components/CodeEditor';
 import { InterpreterState } from './components/InterpreterState';
 import { Output } from './components/Output';
-import { Settings } from './components/Settings';
 import { usePyodide } from './hooks/usePyodide';
-import { useStickyState } from './hooks/useStickyState';
 
 const DEFAULT_CODE = `# Welcome to Python Interpreter Visualizer
 # Write your Python code here and click Run
@@ -27,9 +25,6 @@ export function App() {
   const [traces, setTraces] = useState([]);
   const [currentStep, setCurrentStep] = useState(0);
   const [prevVariables, setPrevVariables] = useState({});
-
-  // Settings
-  const [filterModules, setFilterModules] = useStickyState(true, 'filterModules');
 
   const { pyodide, loading, error, runCode, runCodeWithTrace } = usePyodide();
 
@@ -71,7 +66,7 @@ export function App() {
     setPrevVariables({});
     setTraces([]); // Clear old traces immediately
 
-    const result = await runCodeWithTrace(code, filterModules);
+    const result = await runCodeWithTrace(code);
 
     if (result.error) {
       setOutput(`Error: ${result.error}`);
@@ -177,11 +172,6 @@ export function App() {
               Run (Ctrl-S / F5)
             </button>
           )}
-
-          <Settings
-            filterModules={filterModules}
-            setFilterModules={setFilterModules}
-          />
         </div>
       </header>
 
