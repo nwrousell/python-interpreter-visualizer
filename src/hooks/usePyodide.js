@@ -152,6 +152,14 @@ def _trace_function(frame, event, arg):
 _trace_data = []
       `);
 
+      // Clear global variables from previous runs (except builtins and system vars)
+      pyodide.runPython(`
+# Get current globals
+_user_globals = [k for k in list(globals().keys()) if not k.startswith('_') and k not in _builtins]
+for _var in _user_globals:
+    del globals()[_var]
+      `);
+
       // Run user code with tracing
       pyodide.runPython(`
 sys.settrace(_trace_function)
@@ -159,6 +167,15 @@ try:
     exec("""${code.replace(/"/g, '\\"').replace(/\n/g, '\\n')}""")
 finally:
     sys.settrace(None)
+      `);
+
+      // Capture final output state (to catch any prints that happened after last line trace)
+      pyodide.runPython(`
+# Add a final trace entry with the complete output
+if _trace_data:
+    final_output = sys.stdout.getvalue()
+    # Update the last trace with final output
+    _trace_data[-1]['output'] = final_output
       `);
 
       // Get trace data

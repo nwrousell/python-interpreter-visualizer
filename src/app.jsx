@@ -5,7 +5,6 @@ import { Output } from './components/Output';
 import { Settings } from './components/Settings';
 import { usePyodide } from './hooks/usePyodide';
 import { useStickyState } from './hooks/useStickyState';
-import { useDarkMode } from './hooks/useDarkMode';
 
 const DEFAULT_CODE = `# Welcome to Python Interpreter Visualizer
 # Write your Python code here and click Run
@@ -31,18 +30,8 @@ export function App() {
 
   // Settings
   const [filterModules, setFilterModules] = useStickyState(true, 'filterModules');
-  const [theme, setTheme, actualTheme] = useDarkMode();
 
   const { pyodide, loading, error, runCode, runCodeWithTrace } = usePyodide();
-
-  // Apply dark mode class to document root
-  useEffect(() => {
-    if (actualTheme === 'dark') {
-      document.documentElement.classList.add('dark');
-    } else {
-      document.documentElement.classList.remove('dark');
-    }
-  }, [actualTheme]);
 
   // Keyboard shortcuts
   useEffect(() => {
@@ -192,8 +181,6 @@ export function App() {
           <Settings
             filterModules={filterModules}
             setFilterModules={setFilterModules}
-            theme={theme}
-            setTheme={setTheme}
           />
         </div>
       </header>

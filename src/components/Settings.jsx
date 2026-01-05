@@ -1,6 +1,6 @@
 import { useState, useRef, useEffect } from 'preact/hooks';
 
-export function Settings({ filterModules, setFilterModules, theme, setTheme }) {
+export function Settings({ filterModules, setFilterModules }) {
   const [isOpen, setIsOpen] = useState(false);
   const popoverRef = useRef(null);
 
@@ -33,40 +33,6 @@ export function Settings({ filterModules, setFilterModules, theme, setTheme }) {
             <h3 className="font-semibold text-text">Settings</h3>
           </div>
           <div className="p-4 space-y-4">
-            {/* Theme setting */}
-            <div>
-              <div className="text-sm font-medium text-text mb-2">Theme</div>
-              <div className="space-y-2">
-                <label className="flex items-center gap-2 cursor-pointer">
-                  <input
-                    type="radio"
-                    name="theme"
-                    checked={theme === 'auto'}
-                    onChange={() => setTheme('auto')}
-                  />
-                  <span className="text-sm text-text">Auto (follow system)</span>
-                </label>
-                <label className="flex items-center gap-2 cursor-pointer">
-                  <input
-                    type="radio"
-                    name="theme"
-                    checked={theme === 'light'}
-                    onChange={() => setTheme('light')}
-                  />
-                  <span className="text-sm text-text">Light</span>
-                </label>
-                <label className="flex items-center gap-2 cursor-pointer">
-                  <input
-                    type="radio"
-                    name="theme"
-                    checked={theme === 'dark'}
-                    onChange={() => setTheme('dark')}
-                  />
-                  <span className="text-sm text-text">Dark</span>
-                </label>
-              </div>
-            </div>
-
             {/* Filter modules setting */}
             <label className="flex items-start gap-3 cursor-pointer">
               <input
