@@ -172,6 +172,7 @@ finally:
 
       // Capture final state after execution completes
       const numLines = code.split('\n').length;
+      const finalLineNumber = numLines + 1;
       pyodide.runPython(`
 # Add a final trace entry showing state after last line executes
 final_output = sys.stdout.getvalue()
@@ -190,7 +191,7 @@ for name, value in globals().items():
 
 # Add final trace entry (line number is one past the last line)
 _trace_data.append({
-    'line': ${numLines + 1},
+    'line': ` + finalLineNumber + `,
     'globalVariables': final_globals,
     'callStack': [],
     'output': final_output
