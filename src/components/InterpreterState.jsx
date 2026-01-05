@@ -1,3 +1,6 @@
+import { useEffect, useState } from 'preact/hooks';
+import { useBoop } from '../hooks/useBoop';
+
 // Color palette for different types
 const TYPE_COLORS = {
   int: { bg: 'bg-blue-100', border: 'border-blue-300', text: 'text-blue-800' },
@@ -16,7 +19,68 @@ function getTypeColor(type) {
   return TYPE_COLORS[type] || TYPE_COLORS.default;
 }
 
-export function InterpreterState({ variables = {}, mode = 'editing' }) {
+function Variable({ name, variable, prevValue }) {
+  const colors = getTypeColor(variable.type);
+  const { style, trigger } = useBoop({ scale: 1.15, timing: 200 });
+
+  useEffect(() => {
+    if (prevValue !== undefined && prevValue !== variable.value) {
+      trigger();
+    }
+  }, [variable.value, prevValue]);
+
+  return (
+    <div className="flex items-baseline justify-between gap-3 py-1.5">
+      {/* Variable name and type */}
+      <div className="flex items-baseline gap-2 flex-shrink-0">
+        <span className="font-semibold text-text text-sm">{name}</span>
+        <span className="text-xs text-text-secondary">: {variable.type}</span>
+      </div>
+
+      {/* Value box */}
+      <div
+        style={style}
+        className={`px-2 py-0.5 border ${colors.border} ${colors.bg} ${colors.text} flex-shrink-0`}
+      >
+        <code className="text-xs font-mono whitespace-nowrap">{variable.value}</code>
+      </div>
+    </div>
+  );
+}
+
+function CallStackFrame({ frame, isNew, isRemoving }) {
+  const [mounted, setMounted] = useState(false);
+
+  useEffect(() => {
+    setMounted(true);
+  }, []);
+
+  const animationClass = isRemoving
+    ? 'translate-x-full opacity-0'
+    : isNew && !mounted
+    ? 'translate-x-full opacity-0'
+    : 'translate-x-0 opacity-100';
+
+  return (
+    <div
+      className={`border border-border bg-background-secondary p-2 transition-all duration-300 ${animationClass}`}
+    >
+      <div className="font-semibold text-sm text-text">{frame.name}</div>
+      {frame.args && (
+        <div className="text-xs text-text-secondary font-mono mt-1">{frame.args}</div>
+      )}
+    </div>
+  );
+}
+
+export function InterpreterState({
+  variables = {},
+  prevVariables = {},
+  callStack = [],
+  prevCallStack = [],
+  mode = 'editing',
+  showCallStack = false,
+}) {
   const variableNames = Object.keys(variables);
 
   if (mode === 'editing') {
@@ -30,53 +94,55 @@ export function InterpreterState({ variables = {}, mode = 'editing' }) {
     );
   }
 
-  if (variableNames.length === 0) {
-    return (
-      <div className="p-4">
-        <div className="text-sm text-text-secondary">
-          <p>No variables yet.</p>
-          <p className="mt-2">Variables will appear as you step through the code.</p>
-        </div>
-      </div>
-    );
-  }
-
   return (
-    <div className="p-4">
-      <div className="space-y-3">
-        {variableNames.map((name) => {
-          const variable = variables[name];
-          const colors = getTypeColor(variable.type);
-
-          return (
-            <div
-              key={name}
-              className="border border-border p-3 bg-background-secondary"
-            >
-              <div className="flex items-start justify-between gap-3">
-                {/* Variable name and type */}
-                <div className="flex-shrink-0">
-                  <div className="flex items-baseline gap-2">
-                    <span className="font-semibold text-text">{name}</span>
-                    <span className="text-xs text-text-secondary">
-                      : {variable.type}
-                    </span>
-                  </div>
-                </div>
-
-                {/* Value box */}
-                <div
-                  className={`flex-grow min-w-0 px-2 py-1 border ${colors.border} ${colors.bg} ${colors.text}`}
-                >
-                  <code className="text-sm font-mono break-words">
-                    {variable.value}
-                  </code>
-                </div>
-              </div>
-            </div>
-          );
-        })}
+    <div className="p-4 space-y-4">
+      {/* Variables Section */}
+      <div>
+        <h3 className="text-xs font-semibold text-text-secondary uppercase mb-2">
+          Variables
+        </h3>
+        {variableNames.length === 0 ? (
+          <div className="text-sm text-text-secondary">No variables yet.</div>
+        ) : (
+          <div>
+            {variableNames.map((name) => (
+              <Variable
+                key={name}
+                name={name}
+                variable={variables[name]}
+                prevValue={prevVariables[name]?.value}
+              />
+            ))}
+          </div>
+        )}
       </div>
+
+      {/* Call Stack Section */}
+      {showCallStack && (
+        <>
+          <div className="border-t border-border"></div>
+          <div>
+            <h3 className="text-xs font-semibold text-text-secondary uppercase mb-2">
+              Call Stack
+            </h3>
+            {callStack.length === 0 ? (
+              <div className="text-sm text-text-secondary">No function calls.</div>
+            ) : (
+              <div className="space-y-2">
+                {callStack.map((frame, index) => {
+                  const isNew =
+                    !prevCallStack[index] ||
+                    prevCallStack[index].name !== frame.name ||
+                    prevCallStack[index].args !== frame.args;
+                  return (
+                    <CallStackFrame key={`${index}-${frame.name}`} frame={frame} isNew={isNew} />
+                  );
+                })}
+              </div>
+            )}
+          </div>
+        </>
+      )}
     </div>
   );
 }

@@ -2,17 +2,22 @@ import { useState, useEffect } from 'preact/hooks';
 import { CodeEditor } from './components/CodeEditor';
 import { InterpreterState } from './components/InterpreterState';
 import { Output } from './components/Output';
+import { Settings } from './components/Settings';
 import { usePyodide } from './hooks/usePyodide';
+import { useStickyState } from './hooks/useStickyState';
 
 const DEFAULT_CODE = `# Welcome to Python Interpreter Visualizer
 # Write your Python code here and click Run
 
-x = 42
-y = "Hello, World!"
-print(f"{y} The answer is {x}")
+def greet(name, age):
+    message = f"Hello, {name}!"
+    print(message)
+    return message
 
-numbers = [1, 2, 3, 4, 5]
-print(f"Sum: {sum(numbers)}")
+x = 42
+y = "World"
+result = greet(y, 25)
+print(f"The answer is {x}")
 `;
 
 export function App() {
@@ -21,24 +26,38 @@ export function App() {
   const [mode, setMode] = useState('editing'); // 'editing' or 'running'
   const [traces, setTraces] = useState([]);
   const [currentStep, setCurrentStep] = useState(0);
+  const [prevVariables, setPrevVariables] = useState({});
+
+  // Settings
+  const [filterModules, setFilterModules] = useStickyState(true, 'filterModules');
+  const [showCallStack, setShowCallStack] = useStickyState(false, 'showCallStack');
+
   const { pyodide, loading, error, runCode, runCodeWithTrace } = usePyodide();
 
   // Keyboard shortcuts
   useEffect(() => {
     const handleKeyDown = (e) => {
-      // Ctrl-S or Cmd-S or F5 to run
-      if ((e.ctrlKey || e.metaKey) && e.key === 's') {
-        e.preventDefault();
-        handleRun();
-      } else if (e.key === 'F5') {
-        e.preventDefault();
-        handleRun();
+      if (mode === 'running') {
+        // Enter to step when in running mode
+        if (e.key === 'Enter') {
+          e.preventDefault();
+          handleStep();
+        }
+      } else {
+        // Ctrl-S or Cmd-S or F5 to run in editing mode
+        if ((e.ctrlKey || e.metaKey) && e.key === 's') {
+          e.preventDefault();
+          handleRun();
+        } else if (e.key === 'F5') {
+          e.preventDefault();
+          handleRun();
+        }
       }
     };
 
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [code, pyodide]);
+  }, [code, pyodide, mode, currentStep, traces]);
 
   const handleRun = async () => {
     if (!pyodide) return;
@@ -46,8 +65,9 @@ export function App() {
     setMode('running');
     setOutput('Running...\n');
     setCurrentStep(0);
+    setPrevVariables({});
 
-    const result = await runCodeWithTrace(code);
+    const result = await runCodeWithTrace(code, filterModules);
 
     if (result.error) {
       setOutput(`Error: ${result.error}`);
@@ -67,6 +87,11 @@ export function App() {
 
   const handleStep = () => {
     if (currentStep < traces.length - 1) {
+      // Save current variables for comparison
+      const currentTrace = traces[currentStep];
+      if (currentTrace) {
+        setPrevVariables(currentTrace.variables);
+      }
       setCurrentStep(currentStep + 1);
     }
   };
@@ -76,11 +101,14 @@ export function App() {
     setTraces([]);
     setCurrentStep(0);
     setOutput('');
+    setPrevVariables({});
   };
 
   const currentTrace = traces[currentStep];
   const currentLine = currentTrace ? currentTrace.line : null;
   const currentVariables = currentTrace ? currentTrace.variables : {};
+  const currentCallStack = currentTrace ? currentTrace.callStack : [];
+  const prevCallStack = currentStep > 0 && traces[currentStep - 1] ? traces[currentStep - 1].callStack : [];
 
   return (
     <div className="h-screen flex flex-col bg-background">
@@ -139,6 +167,13 @@ export function App() {
               Run (Ctrl-S / F5)
             </button>
           )}
+
+          <Settings
+            filterModules={filterModules}
+            setFilterModules={setFilterModules}
+            showCallStack={showCallStack}
+            setShowCallStack={setShowCallStack}
+          />
         </div>
       </header>
 
@@ -162,10 +197,17 @@ export function App() {
         {/* Middle: Interpreter State (1/3) */}
         <div className="w-1/3 border-r border-border flex flex-col">
           <div className="h-10 border-b border-border flex items-center px-3 bg-background-secondary">
-            <span className="text-sm font-medium text-text-secondary">Variables</span>
+            <span className="text-sm font-medium text-text-secondary">Interpreter State</span>
           </div>
           <div className="flex-1 overflow-auto">
-            <InterpreterState variables={currentVariables} mode={mode} />
+            <InterpreterState
+              variables={currentVariables}
+              prevVariables={prevVariables}
+              callStack={currentCallStack}
+              prevCallStack={prevCallStack}
+              mode={mode}
+              showCallStack={showCallStack}
+            />
           </div>
         </div>
 

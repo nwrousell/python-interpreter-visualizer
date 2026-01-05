@@ -58,7 +58,7 @@ sys.stderr = io.StringIO()
     }
   };
 
-  const runCodeWithTrace = async (code) => {
+  const runCodeWithTrace = async (code, filterModules = true) => {
     if (!pyodide) return { error: 'Pyodide not loaded', traces: [], output: '' };
 
     try {
@@ -72,14 +72,37 @@ sys.stderr = io.StringIO()
       pyodide.runPython(`
 import sys
 import json
+import types
 
 # Storage for trace data
 _trace_data = []
 _builtins = set(dir(__builtins__))
+_filter_modules = ${filterModules ? 'True' : 'False'}
 
 def _trace_function(frame, event, arg):
+    # Build call stack
+    call_stack = []
+    current_frame = frame
+    while current_frame is not None:
+        func_name = current_frame.f_code.co_name
+        # Get function arguments
+        args_info = []
+        arg_names = current_frame.f_code.co_varnames[:current_frame.f_code.co_argcount]
+        for arg_name in arg_names:
+            if arg_name in current_frame.f_locals:
+                arg_value = current_frame.f_locals[arg_name]
+                args_info.append(f"{arg_name}={repr(arg_value)[:30]}")
+
+        if func_name != '<module>' and func_name != '_trace_function':
+            call_stack.insert(0, {
+                'name': func_name,
+                'args': ', '.join(args_info)
+            })
+
+        current_frame = current_frame.f_back
+
     if event == 'line':
-        # Get line number (adjusted for 0-indexing in editor)
+        # Get line number
         line_no = frame.f_lineno
 
         # Capture local and global variables (filter out builtins and internals)
@@ -88,6 +111,9 @@ def _trace_function(frame, event, arg):
         # Get local variables
         for name, value in frame.f_locals.items():
             if not name.startswith('_'):
+                # Filter modules if enabled
+                if _filter_modules and isinstance(value, types.ModuleType):
+                    continue
                 variables[name] = {
                     'type': type(value).__name__,
                     'value': repr(value)[:100]  # Limit length
@@ -99,6 +125,9 @@ def _trace_function(frame, event, arg):
                 name not in _builtins and
                 name not in variables and
                 name != '_trace_function'):
+                # Filter modules if enabled
+                if _filter_modules and isinstance(value, types.ModuleType):
+                    continue
                 variables[name] = {
                     'type': type(value).__name__,
                     'value': repr(value)[:100]
@@ -106,7 +135,8 @@ def _trace_function(frame, event, arg):
 
         _trace_data.append({
             'line': line_no,
-            'variables': variables
+            'variables': variables,
+            'callStack': call_stack
         })
 
     return _trace_function
