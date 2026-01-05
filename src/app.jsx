@@ -18,35 +18,127 @@ print(f"Sum: {sum(numbers)}")
 export function App() {
   const [code, setCode] = useState(DEFAULT_CODE);
   const [output, setOutput] = useState('');
-  const { pyodide, loading, error, runCode } = usePyodide();
+  const [mode, setMode] = useState('editing'); // 'editing' or 'running'
+  const [traces, setTraces] = useState([]);
+  const [currentStep, setCurrentStep] = useState(0);
+  const { pyodide, loading, error, runCode, runCodeWithTrace } = usePyodide();
+
+  // Keyboard shortcuts
+  useEffect(() => {
+    const handleKeyDown = (e) => {
+      // Ctrl-S or Cmd-S or F5 to run
+      if ((e.ctrlKey || e.metaKey) && e.key === 's') {
+        e.preventDefault();
+        handleRun();
+      } else if (e.key === 'F5') {
+        e.preventDefault();
+        handleRun();
+      }
+    };
+
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [code, pyodide]);
 
   const handleRun = async () => {
     if (!pyodide) return;
 
+    setMode('running');
     setOutput('Running...\n');
-    const result = await runCode(code);
-    setOutput(result);
+    setCurrentStep(0);
+
+    const result = await runCodeWithTrace(code);
+
+    if (result.error) {
+      setOutput(`Error: ${result.error}`);
+      setTraces([]);
+      setMode('editing');
+    } else {
+      setTraces(result.traces);
+      setOutput(result.output);
+      // Start at first step if traces exist
+      if (result.traces.length > 0) {
+        setCurrentStep(0);
+      } else {
+        setMode('editing');
+      }
+    }
   };
+
+  const handleStep = () => {
+    if (currentStep < traces.length - 1) {
+      setCurrentStep(currentStep + 1);
+    }
+  };
+
+  const handleReset = () => {
+    setMode('editing');
+    setTraces([]);
+    setCurrentStep(0);
+    setOutput('');
+  };
+
+  const currentTrace = traces[currentStep];
+  const currentLine = currentTrace ? currentTrace.line : null;
+  const currentVariables = currentTrace ? currentTrace.variables : {};
 
   return (
     <div className="h-screen flex flex-col bg-background">
       {/* Header */}
       <header className="h-14 border-b border-border flex items-center px-4">
         <h1 className="text-lg font-semibold text-text">Python Interpreter Visualizer</h1>
-        <div className="ml-auto flex items-center gap-4">
+
+        {/* Mode indicator */}
+        <div className="ml-4">
+          {mode === 'editing' ? (
+            <span className="px-3 py-1 bg-green-100 text-green-800 text-xs font-medium border border-green-300">
+              EDITING
+            </span>
+          ) : (
+            <span className="px-3 py-1 bg-blue-100 text-blue-800 text-xs font-medium border border-blue-300">
+              RUNNING
+            </span>
+          )}
+        </div>
+
+        <div className="ml-auto flex items-center gap-3">
           {loading && (
             <span className="text-sm text-text-secondary">Loading Python runtime...</span>
           )}
           {error && (
             <span className="text-sm text-red-600">Error: {error}</span>
           )}
-          <button
-            onClick={handleRun}
-            disabled={loading || !pyodide}
-            className="px-4 py-1.5 bg-primary text-white text-sm border border-primary-dark disabled:opacity-50 disabled:cursor-not-allowed hover:bg-primary-dark transition-colors"
-          >
-            Run
-          </button>
+
+          {mode === 'running' && traces.length > 0 && (
+            <>
+              <span className="text-sm text-text-secondary">
+                Step {currentStep + 1} of {traces.length}
+              </span>
+              <button
+                onClick={handleStep}
+                disabled={currentStep >= traces.length - 1}
+                className="px-4 py-1.5 bg-primary text-white text-sm border border-primary-dark disabled:opacity-50 disabled:cursor-not-allowed hover:bg-primary-dark transition-colors"
+              >
+                Step
+              </button>
+              <button
+                onClick={handleReset}
+                className="px-4 py-1.5 bg-secondary text-white text-sm border border-secondary disabled:opacity-50 disabled:cursor-not-allowed hover:bg-secondary/80 transition-colors"
+              >
+                Reset
+              </button>
+            </>
+          )}
+
+          {mode === 'editing' && (
+            <button
+              onClick={handleRun}
+              disabled={loading || !pyodide}
+              className="px-4 py-1.5 bg-primary text-white text-sm border border-primary-dark disabled:opacity-50 disabled:cursor-not-allowed hover:bg-primary-dark transition-colors"
+            >
+              Run (Ctrl-S / F5)
+            </button>
+          )}
         </div>
       </header>
 
@@ -58,17 +150,22 @@ export function App() {
             <span className="text-sm font-medium text-text-secondary">Editor</span>
           </div>
           <div className="flex-1 overflow-hidden">
-            <CodeEditor value={code} onChange={setCode} />
+            <CodeEditor
+              value={code}
+              onChange={setCode}
+              currentLine={currentLine}
+              readOnly={mode === 'running'}
+            />
           </div>
         </div>
 
         {/* Middle: Interpreter State (1/3) */}
         <div className="w-1/3 border-r border-border flex flex-col">
           <div className="h-10 border-b border-border flex items-center px-3 bg-background-secondary">
-            <span className="text-sm font-medium text-text-secondary">Interpreter State</span>
+            <span className="text-sm font-medium text-text-secondary">Variables</span>
           </div>
           <div className="flex-1 overflow-auto">
-            <InterpreterState />
+            <InterpreterState variables={currentVariables} mode={mode} />
           </div>
         </div>
 

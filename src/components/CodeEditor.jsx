@@ -1,9 +1,43 @@
 import { useEffect, useRef } from 'preact/hooks';
 import { EditorView, basicSetup } from 'codemirror';
+import { Decoration } from '@codemirror/view';
 import { python } from '@codemirror/lang-python';
-import { EditorState } from '@codemirror/state';
+import { EditorState, StateField, StateEffect } from '@codemirror/state';
 
-export function CodeEditor({ value, onChange }) {
+// Effect to update the highlighted line
+const setHighlightedLine = StateEffect.define();
+
+// Field to track which line is highlighted
+const highlightedLineField = StateField.define({
+  create() {
+    return Decoration.none;
+  },
+  update(value, tr) {
+    for (let effect of tr.effects) {
+      if (effect.is(setHighlightedLine)) {
+        if (effect.value === null) {
+          return Decoration.none;
+        }
+        const line = tr.state.doc.line(effect.value);
+        const decoration = Decoration.line({
+          attributes: { class: 'cm-highlighted-line' },
+        });
+        return Decoration.set([decoration.range(line.from)]);
+      }
+    }
+    return value;
+  },
+  provide: (f) => EditorView.decorations.from(f),
+});
+
+const highlightLineTheme = EditorView.theme({
+  '.cm-highlighted-line': {
+    backgroundColor: '#fff3cd',
+    borderLeft: '3px solid #ffc107',
+  },
+});
+
+export function CodeEditor({ value, onChange, currentLine = null, readOnly = false }) {
   const editorRef = useRef(null);
   const viewRef = useRef(null);
 
@@ -15,8 +49,11 @@ export function CodeEditor({ value, onChange }) {
       extensions: [
         basicSetup,
         python(),
+        highlightedLineField,
+        highlightLineTheme,
+        EditorState.readOnly.of(readOnly),
         EditorView.updateListener.of((update) => {
-          if (update.docChanged) {
+          if (update.docChanged && !readOnly) {
             onChange(update.state.doc.toString());
           }
         }),
@@ -50,6 +87,59 @@ export function CodeEditor({ value, onChange }) {
       view.destroy();
     };
   }, []);
+
+  // Update highlighted line when currentLine changes
+  useEffect(() => {
+    if (!viewRef.current) return;
+
+    viewRef.current.dispatch({
+      effects: setHighlightedLine.of(currentLine),
+    });
+
+    // Scroll to the highlighted line
+    if (currentLine !== null) {
+      const line = viewRef.current.state.doc.line(currentLine);
+      viewRef.current.dispatch({
+        effects: EditorView.scrollIntoView(line.from, { y: 'center' }),
+      });
+    }
+  }, [currentLine]);
+
+  // Update read-only state
+  useEffect(() => {
+    if (!viewRef.current) return;
+
+    viewRef.current.dispatch({
+      effects: StateEffect.reconfigure.of([
+        basicSetup,
+        python(),
+        highlightedLineField,
+        highlightLineTheme,
+        EditorState.readOnly.of(readOnly),
+        EditorView.updateListener.of((update) => {
+          if (update.docChanged && !readOnly) {
+            onChange(update.state.doc.toString());
+          }
+        }),
+        EditorView.theme({
+          '&': {
+            height: '100%',
+            fontSize: '14px',
+          },
+          '.cm-scroller': {
+            overflow: 'auto',
+            fontFamily: 'Consolas, Monaco, "Courier New", monospace',
+          },
+          '.cm-content': {
+            padding: '8px 0',
+          },
+          '.cm-line': {
+            padding: '0 8px',
+          },
+        }),
+      ]),
+    });
+  }, [readOnly]);
 
   return <div ref={editorRef} className="h-full w-full" />;
 }
