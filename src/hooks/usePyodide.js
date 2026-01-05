@@ -154,8 +154,9 @@ _trace_data = []
 
       // Clear global variables from previous runs (except builtins and system vars)
       pyodide.runPython(`
-# Get current globals
-_user_globals = [k for k in list(globals().keys()) if not k.startswith('_') and k not in _builtins]
+# Get current globals (exclude system modules we need)
+_system_vars = {'sys', 'io', 'json', 'types'}
+_user_globals = [k for k in list(globals().keys()) if not k.startswith('_') and k not in _builtins and k not in _system_vars]
 for _var in _user_globals:
     del globals()[_var]
       `);
