@@ -1,6 +1,6 @@
 import { useState, useRef, useEffect } from 'preact/hooks';
 
-export function Settings({ filterModules, setFilterModules, showCallStack, setShowCallStack }) {
+export function Settings({ filterModules, setFilterModules }) {
   const [isOpen, setIsOpen] = useState(false);
   const popoverRef = useRef(null);
 
@@ -57,22 +57,6 @@ export function Settings({ filterModules, setFilterModules, showCallStack, setSh
                 <div className="text-sm font-medium text-text">Filter modules</div>
                 <div className="text-xs text-text-secondary mt-1">
                   Hide imported modules from variable display
-                </div>
-              </div>
-            </label>
-
-            {/* Show call stack setting */}
-            <label className="flex items-start gap-3 cursor-pointer">
-              <input
-                type="checkbox"
-                checked={showCallStack}
-                onChange={(e) => setShowCallStack(e.target.checked)}
-                className="mt-1"
-              />
-              <div className="flex-1">
-                <div className="text-sm font-medium text-text">Show call stack</div>
-                <div className="text-xs text-text-secondary mt-1">
-                  Display function call stack during execution
                 </div>
               </div>
             </label>

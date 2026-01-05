@@ -30,7 +30,6 @@ export function App() {
 
   // Settings
   const [filterModules, setFilterModules] = useStickyState(true, 'filterModules');
-  const [showCallStack, setShowCallStack] = useStickyState(false, 'showCallStack');
 
   const { pyodide, loading, error, runCode, runCodeWithTrace } = usePyodide();
 
@@ -90,7 +89,10 @@ export function App() {
       // Save current variables for comparison
       const currentTrace = traces[currentStep];
       if (currentTrace) {
-        setPrevVariables(currentTrace.variables);
+        setPrevVariables({
+          globalVariables: currentTrace.globalVariables,
+          callStack: currentTrace.callStack,
+        });
       }
       setCurrentStep(currentStep + 1);
     }
@@ -106,9 +108,12 @@ export function App() {
 
   const currentTrace = traces[currentStep];
   const currentLine = currentTrace ? currentTrace.line : null;
-  const currentVariables = currentTrace ? currentTrace.variables : {};
+  const currentGlobalVariables = currentTrace ? currentTrace.globalVariables : {};
   const currentCallStack = currentTrace ? currentTrace.callStack : [];
-  const prevCallStack = currentStep > 0 && traces[currentStep - 1] ? traces[currentStep - 1].callStack : [];
+  const currentOutput = currentTrace ? currentTrace.output : '';
+
+  const prevGlobalVariables = prevVariables.globalVariables || {};
+  const prevCallStack = prevVariables.callStack || [];
 
   return (
     <div className="h-screen flex flex-col bg-background">
@@ -171,8 +176,6 @@ export function App() {
           <Settings
             filterModules={filterModules}
             setFilterModules={setFilterModules}
-            showCallStack={showCallStack}
-            setShowCallStack={setShowCallStack}
           />
         </div>
       </header>
@@ -201,12 +204,11 @@ export function App() {
           </div>
           <div className="flex-1 overflow-auto">
             <InterpreterState
-              variables={currentVariables}
-              prevVariables={prevVariables}
+              globalVariables={currentGlobalVariables}
+              prevGlobalVariables={prevGlobalVariables}
               callStack={currentCallStack}
               prevCallStack={prevCallStack}
               mode={mode}
-              showCallStack={showCallStack}
             />
           </div>
         </div>
@@ -217,7 +219,7 @@ export function App() {
             <span className="text-sm font-medium text-text-secondary">Output</span>
           </div>
           <div className="flex-1 overflow-auto">
-            <Output output={output} />
+            <Output output={mode === 'running' ? currentOutput : output} />
           </div>
         </div>
       </div>

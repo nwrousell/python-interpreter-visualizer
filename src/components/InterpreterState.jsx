@@ -30,7 +30,7 @@ function Variable({ name, variable, prevValue }) {
   }, [variable.value, prevValue]);
 
   return (
-    <div className="flex items-baseline justify-between gap-3 py-1.5">
+    <div className="flex items-center justify-between gap-3 py-1.5">
       {/* Variable name and type */}
       <div className="flex items-baseline gap-2 flex-shrink-0">
         <span className="font-semibold text-text text-sm">{name}</span>
@@ -40,7 +40,7 @@ function Variable({ name, variable, prevValue }) {
       {/* Value box */}
       <div
         style={style}
-        className={`px-2 py-0.5 border ${colors.border} ${colors.bg} ${colors.text} flex-shrink-0`}
+        className={`px-2 py-1 border ${colors.border} ${colors.bg} ${colors.text} flex-shrink-0 flex items-center`}
       >
         <code className="text-xs font-mono whitespace-nowrap">{variable.value}</code>
       </div>
@@ -48,41 +48,37 @@ function Variable({ name, variable, prevValue }) {
   );
 }
 
-function CallStackFrame({ frame, isNew, isRemoving }) {
-  const [mounted, setMounted] = useState(false);
-
-  useEffect(() => {
-    setMounted(true);
-  }, []);
-
-  const animationClass = isRemoving
-    ? 'translate-x-full opacity-0'
-    : isNew && !mounted
-    ? 'translate-x-full opacity-0'
-    : 'translate-x-0 opacity-100';
+function FrameVariables({ frameName, variables, prevVariables }) {
+  const variableNames = Object.keys(variables);
 
   return (
-    <div
-      className={`border border-border bg-background-secondary p-2 transition-all duration-300 ${animationClass}`}
-    >
-      <div className="font-semibold text-sm text-text">{frame.name}</div>
-      {frame.args && (
-        <div className="text-xs text-text-secondary font-mono mt-1">{frame.args}</div>
+    <div className="border border-border bg-background-secondary p-3">
+      <div className="font-semibold text-sm text-text mb-2">{frameName}</div>
+      {variableNames.length === 0 ? (
+        <div className="text-xs text-text-secondary">No variables</div>
+      ) : (
+        <div>
+          {variableNames.map((name) => (
+            <Variable
+              key={name}
+              name={name}
+              variable={variables[name]}
+              prevValue={prevVariables?.[name]?.value}
+            />
+          ))}
+        </div>
       )}
     </div>
   );
 }
 
 export function InterpreterState({
-  variables = {},
-  prevVariables = {},
+  globalVariables = {},
+  prevGlobalVariables = {},
   callStack = [],
   prevCallStack = [],
   mode = 'editing',
-  showCallStack = false,
 }) {
-  const variableNames = Object.keys(variables);
-
   if (mode === 'editing') {
     return (
       <div className="p-4">
@@ -95,54 +91,27 @@ export function InterpreterState({
   }
 
   return (
-    <div className="p-4 space-y-4">
-      {/* Variables Section */}
-      <div>
-        <h3 className="text-xs font-semibold text-text-secondary uppercase mb-2">
-          Variables
-        </h3>
-        {variableNames.length === 0 ? (
-          <div className="text-sm text-text-secondary">No variables yet.</div>
-        ) : (
-          <div>
-            {variableNames.map((name) => (
-              <Variable
-                key={name}
-                name={name}
-                variable={variables[name]}
-                prevValue={prevVariables[name]?.value}
-              />
-            ))}
-          </div>
-        )}
-      </div>
+    <div className="p-4 space-y-3">
+      {/* Global variables */}
+      <FrameVariables
+        frameName="Global"
+        variables={globalVariables}
+        prevVariables={prevGlobalVariables}
+      />
 
-      {/* Call Stack Section */}
-      {showCallStack && (
-        <>
-          <div className="border-t border-border"></div>
-          <div>
-            <h3 className="text-xs font-semibold text-text-secondary uppercase mb-2">
-              Call Stack
-            </h3>
-            {callStack.length === 0 ? (
-              <div className="text-sm text-text-secondary">No function calls.</div>
-            ) : (
-              <div className="space-y-2">
-                {callStack.map((frame, index) => {
-                  const isNew =
-                    !prevCallStack[index] ||
-                    prevCallStack[index].name !== frame.name ||
-                    prevCallStack[index].args !== frame.args;
-                  return (
-                    <CallStackFrame key={`${index}-${frame.name}`} frame={frame} isNew={isNew} />
-                  );
-                })}
-              </div>
-            )}
-          </div>
-        </>
-      )}
+      {/* Call stack frames */}
+      {callStack.map((frame, index) => {
+        const prevFrame = prevCallStack?.[index];
+        const frameName = frame.args ? `${frame.name}(${frame.args})` : frame.name;
+        return (
+          <FrameVariables
+            key={`${index}-${frame.name}`}
+            frameName={frameName}
+            variables={frame.variables}
+            prevVariables={prevFrame?.variables}
+          />
+        );
+      })}
     </div>
   );
 }
