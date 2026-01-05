@@ -191,7 +191,7 @@ for name, value in globals().items():
 
 # Add final trace entry (line number is one past the last line)
 _trace_data.append({
-    'line': ` + finalLineNumber + `,
+    'line': ${finalLineNumber},
     'globalVariables': final_globals,
     'callStack': [],
     'output': final_output
